@@ -552,6 +552,35 @@ class PiHEAANSensorProcessor:
         
         return sigmoid_result, error
     
+    def _backward_step(self, interpolated_data, error, learning_rate):
+        """역전파: 그래디언트 계산 및 가중치 업데이트"""
+        print("Backward step: 가중치 업데이트 중...")
+        
+        updated_weights = []
+        
+        for sensor_id in range(self.SENSOR_COUNT):
+            print(f"  Computing gradient for sensor {sensor_id}...")
+            
+            # 오차와 센서 데이터의 곱 (그래디언트)
+            gradient = heaan.Ciphertext(self.context)
+            self.eval.mult(interpolated_data[sensor_id], error, gradient)
+            
+            # 그래디언트 합계 계산
+            gradient_sum = self._sum_all_elements(gradient)
+            
+            # 학습률 적용: gradient_sum * learning_rate / DATA_SIZE
+            learning_factor = learning_rate / self.DATA_SIZE
+            scaled_gradient = heaan.Ciphertext(self.context)
+            self.eval.mult(gradient_sum, learning_factor, scaled_gradient)
+            
+            # 그래디언트를 평문으로 복호화하여 가중치 업데이트에 사용
+            gradient_msg = heaan.Message(self.log_slots)
+            self.dec.decrypt(scaled_gradient, self.sk, gradient_msg)
+            gradient_value = gradient_msg[0]
+            
+            updated_weights.append(gradient_value)
+        
+        return updated_weights 
    
     def _sigmoid_approximation(self, x):
         """시그모이드 함수 근사 (체비셰프 다항식)"""
