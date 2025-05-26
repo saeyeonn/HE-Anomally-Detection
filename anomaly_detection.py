@@ -148,3 +148,95 @@ class PiHEAANSensorProcessor:
                     result = self._update_value_at_position(result, right_value, i)
         
         return result
+    
+    def _find_left_valid(self, enc_mask, current_idx):
+        # 왼쪽의 유효한 값 찾기
+        for i in range(current_idx - 1, -1, -1):
+            if enc_mask[i] == 0:
+                return i
+        return -1
+    
+    def _find_right_valid(self, enc_mask, current_idx):
+        # 오른쪽의 유효한 값 찾기
+        for i in range(current_idx + 1, self.DATA_SIZE):
+            if enc_mask[i] == 0:
+                return i
+        return -1
+    
+    def _extract_value_at_position(self, enc_data, position):
+        
+        self.bootstrapper.bootstrap(enc_data, enc_data);
+            
+        # 해당 위치를 첫 번째 슬롯으로 로테이트
+        rotated = heaan.Ciphertext(self.context)
+        if position > 0:
+            self.eval.left_rotate(enc_data, position, rotated)
+        else:
+            rotated = enc_data
+        
+        # 첫 번째 슬롯만 1인 마스크 생성 및 적용
+        mask_msg = heaan.Message(self.log_slots)
+        mask_msg[0] = 1.0
+        for i in range(1, 2**self.log_slots):
+            mask_msg[i] = 0.0
+        
+        mask_ctxt = heaan.Ciphertext(self.context)
+        self.enc.encrypt(mask_msg, self.sk, mask_ctxt)
+        
+        # 마스크 적용
+        extracted = heaan.Ciphertext(self.context)
+        self.eval.mult(rotated, mask_ctxt, extracted)
+        
+        return extracted
+    
+    
+    def _update_value_at_position(self, enc_data, new_value, position):
+        # 해당 위치를 0으로 만드는 마스크
+        mask_msg = heaan.Message(self.log_slots)
+        for i in range(2**self.log_slots):
+            mask_msg[i] = 0.0 if i == position else 1.0
+        
+        mask_ctxt = heaan.Ciphertext(self.context)
+        self.enc.encrypt(mask_msg, self.sk, mask_ctxt)
+        
+        # 기존 데이터에서 해당 위치 제거
+        cleared = heaan.Ciphertext(self.context)
+        self.eval.mult(enc_data, mask_ctxt, cleared)
+        
+        # 새 값을 해당 위치로 로테이트
+        rotated_value = heaan.Ciphertext(self.context)
+        if position > 0:
+            self.eval.right_rotate(new_value, position, rotated_value)
+        else:
+            rotated_value = new_value
+        
+        # 결합
+        result = heaan.Ciphertext(self.context)
+        self.eval.add(cleared, rotated_value, result)
+        
+        return result
+    
+    
+    def _linear_interpolate_homomorphic(self, enc_data, left_idx, right_idx, target_idx):
+        # 좌우 값 추출
+        left_value = self._extract_value_at_position(enc_data, left_idx)
+        right_value = self._extract_value_at_position(enc_data, right_idx)
+        
+        # 선형 보간 계산: y = y1 + (x - x1) * (y2 - y1) / (x2 - x1)
+        dx = right_idx - left_idx
+        dt = target_idx - left_idx
+        ratio = dt / dx
+        
+        # (y2 - y1)
+        diff = heaan.Ciphertext(self.context)
+        self.eval.sub(right_value, left_value, diff)
+        
+        # ratio * (y2 - y1)
+        scaled_diff = heaan.Ciphertext(self.context)
+        self.eval.mult(diff, ratio, scaled_diff)
+        
+        # y1 + ratio * (y2 - y1)
+        result = heaan.Ciphertext(self.context)
+        self.eval.add(left_value, scaled_diff, result)
+        
+        return result
