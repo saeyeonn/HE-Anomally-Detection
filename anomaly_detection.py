@@ -83,3 +83,41 @@ class PiHEAANSensorProcessor:
         self.bootstrapper.bootstrap(ctxt, result)
         return result
     
+    
+    def encrypt_sensor_data(self, sensor_data, nan_masks):
+        # 각 센서별로 약 1567개 타임스탬프 데이터를 하나의 Ciphertext에 저장
+        encrypted_data = []
+        plaintext_nan_masks = []
+        
+        for sensor_id in range(self.SENSOR_COUNT):
+            # 현재 센서의 데이터를 메시지에 저장
+            msg_data = heaan.Message(self.log_slots)
+            
+            # 데이터를 슬롯에 저장
+            for i in range(min(self.DATA_SIZE, 2 ** self.log_slots)):
+                # NaN 위치는 1로 설정
+                msg_data[i] = sensor_data[sensor_id, i] if nan_masks[sensor_id, i] == 0 else 1.0
+            
+            # 암호화
+            ctxt_data = heaan.Ciphertext(self.context)
+            self.enc.encrypt(msg_data, self.sk, ctxt_data)
+            
+            encrypted_data.append(ctxt_data)
+            # NaN 마스크는 평문으로 저장
+            plaintext_nan_masks.append(nan_masks[sensor_id].copy())
+
+        msg_data = heaan.Message(self.log_slots)
+        
+        # debug
+        # print("encrypted_data")
+        # print(encrypted_data)
+        
+        # self.dec.decrypt(encrypted_data[0], self.sk, msg_data)
+        # print(msg_data)
+        
+        # print("plaintext_nan_masks")
+        # print(plaintext_nan_masks)
+        
+        return encrypted_data, plaintext_nan_masks
+    
+    
