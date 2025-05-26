@@ -121,6 +121,32 @@ class PiHEAANSensorProcessor:
         return encrypted_data, plaintext_nan_masks
     
     
+    ######################################################
+    
+    def process_sensor_data_with_training(self, sensor_data, nan_masks, initial_weights, initial_bias, 
+                                    y_labels, timestamps, learning_rate=0.01, num_steps=5, threshold=0.5):
+        """학습을 포함한 전체 센서 데이터 처리 파이프라인"""
+        print("=== 학습을 포함한 센서 데이터 처리 시작 ===")
+        
+        # 1. 데이터 암호화
+        print("\n1. 센서별 데이터 암호화...")
+        encrypted_data, plaintext_nan_masks = self.encrypt_sensor_data(sensor_data, nan_masks)
+        
+        # 2. 선형 보간
+        print("\n2. 센서별 선형 보간...")
+        interpolated_data = self.interpolate_all_sensors(encrypted_data, plaintext_nan_masks)
+        
+        # 3. 로지스틱 회귀 학습 및 예측
+        print("\n3. 로지스틱 회귀 학습 및 예측...")
+        anomaly_results = self.logistic_regression_all_data(
+            interpolated_data, initial_weights, initial_bias, timestamps, 
+            y_labels, learning_rate, num_steps, threshold
+        )
+        
+        return anomaly_results
+    
+    ##########################################################
+    
     def interpolate_all_sensors(self, encrypted_data, plaintext_nan_masks):
         interpolated_data = []
         
