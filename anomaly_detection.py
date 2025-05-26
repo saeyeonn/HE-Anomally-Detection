@@ -270,7 +270,58 @@ class PiHEAANSensorProcessor:
         return result
     
     
-    #########################################################3
+    #########################################################
+    
+    def logistic_regression_all_data(self, interpolated_data, weights, bias, timestamps, y_labels, learning_rate=0.01, num_steps=2, threshold=0.5):
+        """로지스틱 회귀 전체 과정"""
+        print("=== 로지스틱 회귀 시작 ===")
+        
+        # y_labels를 암호화
+        y_msg = heaan.Message(self.log_slots)
+        for i in range(min(len(y_labels), 2**self.log_slots)):
+            y_msg[i] = complex(float(y_labels[i]), 0.0)
+            # y_msg[i] = y_labels[i]
+        
+        # 나머지 슬롯을 0으로 초기화
+        for i in range(len(y_labels), 2**self.log_slots):
+            y_msg[i] = complex(0.0, 0.0)
+            
+        y_ctxt = heaan.Ciphertext(self.context)
+        self.enc.encrypt(y_msg, self.sk, y_ctxt)
+        
+        current_weights = weights
+        current_bias = bias
+        
+        # 여러 Step 수행
+        for step in range(num_steps):
+            print(f"\n{'='*20} Step {step+1} {'='*20}")
+            
+            # 순전파 및 오차 계산
+            sigmoid_result, error = self._forward_step(
+                interpolated_data, current_weights, current_bias, y_ctxt
+            )
+            
+            # 역전파 및 가중치 업데이트
+            updated_weights = self._backward_step(
+                interpolated_data, error, learning_rate
+            )
+            
+            current_weights = updated_weights
+            
+            # 중간 결과 출력
+            self._print_step_results(step+1, sigmoid_result, error)
+        
+        # 최종 예측 및 결과 생성
+        final_predictions, final_error = self._forward_step(
+            interpolated_data, current_weights, current_bias, y_ctxt
+        )
+        
+        anomaly_results = self._generate_final_results(
+            final_predictions, timestamps, threshold
+        )
+        
+        return anomaly_results
+    
     
     def _forward_step(self, interpolated_data, weights, bias, y_ctxt):
         """순전파: 예측값 계산 및 오차 계산"""
