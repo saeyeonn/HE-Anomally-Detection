@@ -349,3 +349,29 @@ class PiHEAANSensorProcessor:
         print(f"Sigmoid result: {debug_msg[0]}")
         
         return final_result
+    
+    def _sum_all_elements(self, ctxt):
+        """Ciphertext의 모든 슬롯 합계 계산 (로테이션 사용)"""
+        result = heaan.Ciphertext(self.context)
+        result = ctxt
+        
+        # 로그-스케일 합산
+        step = 1
+        while step < self.DATA_SIZE:
+            rotated = heaan.Ciphertext(self.context)
+            self.eval.left_rotate(result, step, rotated)
+            temp_result = heaan.Ciphertext(self.context)
+            self.eval.add(result, rotated, temp_result)
+            result = temp_result
+            step *= 2
+    
+        return result
+
+
+    def _initialize_zero_ciphertext(self, ctxt):
+        """Ciphertext를 0으로 초기화"""
+        zero_msg = heaan.Message(self.log_slots)
+        for i in range(2**self.log_slots):
+            zero_msg[i] = 0.0
+        
+        self.enc.encrypt(zero_msg, self.sk, ctxt)
