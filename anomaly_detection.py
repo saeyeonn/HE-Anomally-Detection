@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import math
 import time
-
+    
         
 class PiHEAANSensorProcessor:
     def __init__(self, key_file_path="./keys"):
@@ -68,8 +68,6 @@ class PiHEAANSensorProcessor:
 
         self.bootstrapper = heaan.Bootstrapper(self.eval, self.log_slots)
         
-        
-        
         # 부트스트래핑 준비 확인
         if self.bootstrapper.is_bootstrap_ready(self.log_slots):
             print("Bootstrap is ready")
@@ -77,6 +75,11 @@ class PiHEAANSensorProcessor:
             print("Making bootstrap constants...")
             self.bootstrapper.makeBootConstants(self.log_slots)
             print("Bootstrap constants created")
-
-
-  
+            
+    
+    def _bootstrap(self, ctxt):
+        print("Bootstrapping...")
+        result = heaan.Ciphertext(self.context)
+        self.bootstrapper.bootstrap(ctxt, result)
+        return result
+    
