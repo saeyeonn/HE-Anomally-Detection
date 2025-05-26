@@ -121,3 +121,30 @@ class PiHEAANSensorProcessor:
         return encrypted_data, plaintext_nan_masks
     
     
+    def _interpolate_single_sensor(self, enc_data, enc_mask):
+        result = heaan.Ciphertext(self.context)
+        result = enc_data
+        
+        # 평문 마스크로 NaN 위치 확인 및 보간
+        for i in range(self.DATA_SIZE):
+            if enc_mask[i] == 1:  # NaN 위치
+                # 왼쪽과 오른쪽 유효값 찾기
+                left_idx = self._find_left_valid(enc_mask, i)
+                right_idx = self._find_right_valid(enc_mask, i)
+                
+                if left_idx >= 0 and right_idx >= 0:
+                    # 선형 보간
+                    interpolated_value = self._linear_interpolate_homomorphic(
+                        result, left_idx, right_idx, i
+                    )
+                    result = self._update_value_at_position(result, interpolated_value, i)
+                elif left_idx >= 0:
+                    # 왼쪽 값으로 채움
+                    left_value = self._extract_value_at_position(result, left_idx)
+                    result = self._update_value_at_position(result, left_value, i)
+                elif right_idx >= 0:
+                    # 오른쪽 값으로 채움
+                    right_value = self._extract_value_at_position(result, right_idx)
+                    result = self._update_value_at_position(result, right_value, i)
+        
+        return result
