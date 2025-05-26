@@ -375,3 +375,80 @@ class PiHEAANSensorProcessor:
             zero_msg[i] = 0.0
         
         self.enc.encrypt(zero_msg, self.sk, ctxt)
+        
+    
+    def create_weight_vector(self, weights):
+        """
+        가중치 배열을 암호화된 벡터로 생성
+        
+        Args:
+            weights: list or numpy array - 가중치 값들
+            
+        Returns:
+            heaan.Ciphertext - 암호화된 가중치 벡터
+        """
+        print(f"Creating weight vector with {len(weights)} weights...")
+        
+        # Message 객체 생성
+        weights_msg = heaan.Message(self.log_slots)
+        
+        # 가중치를 슬롯에 설정
+        for i in range(len(weights)):
+            if i < 2 ** self.log_slots:  # 슬롯 범위 확인
+                weights_msg[i] = weights[i]
+            else:
+                print(f"Warning: Weight index {i} exceeds slot capacity {2**self.log_slots}")
+                break
+        
+        # 나머지 슬롯은 0으로 초기화
+        for i in range(len(weights), 2**self.log_slots):
+            weights_msg[i] = 0.0
+        
+        # 암호화
+        weights_ctxt = heaan.Ciphertext(self.context)
+        self.enc.encrypt(weights_msg, self.sk, weights_ctxt)
+        
+        # 디버깅: 생성된 가중치 확인
+        debug_msg = heaan.Message(self.log_slots)
+        self.dec.decrypt(weights_ctxt, self.sk, debug_msg)
+        
+        print(f"Weight vector created successfully")
+        print(f"First 10 weights: {[debug_msg[i] for i in range(min(10, len(weights)))]}")
+        
+        if len(weights) > 10:
+            print(f"Last 5 weights: {[debug_msg[i] for i in range(len(weights)-5, len(weights))]}")
+        
+        return weights_ctxt
+
+
+    def create_bias_vector(self, bias_value):
+        """
+        편향 값을 모든 슬롯에 설정한 벡터 생성
+        
+        Args:
+            bias_value: float - 편향 값
+            
+        Returns:
+            heaan.Ciphertext - 암호화된 편향 벡터 [bias, bias, bias, ...]
+        """
+        print(f"Creating bias vector with value {bias_value}...")
+        
+        # Message 객체 생성
+        bias_msg = heaan.Message(self.log_slots)
+        
+        # 모든 슬롯에 bias 값 설정
+        for i in range(2**self.log_slots):
+            bias_msg[i] = bias_value
+        
+        # 암호화
+        bias_ctxt = heaan.Ciphertext(self.context)
+        self.enc.encrypt(bias_msg, self.sk, bias_ctxt)
+        
+        # 디버깅: 생성된 편향 확인
+        debug_msg = heaan.Message(self.log_slots)
+        self.dec.decrypt(bias_ctxt, self.sk, debug_msg)
+        
+        print(f"Bias vector created: all slots = {debug_msg[0]}")
+        print(f"Verification - first 5 values: {[debug_msg[i] for i in range(5)]}")
+        
+        return bias_ctxt
