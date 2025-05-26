@@ -268,3 +268,43 @@ class PiHEAANSensorProcessor:
         self.eval.add(left_value, scaled_diff, result)
         
         return result
+    
+    
+    #########################################################3
+    
+    def _forward_step(self, interpolated_data, weights, bias, y_ctxt):
+        """순전파: 예측값 계산 및 오차 계산"""
+        print("Forward step: 예측값 계산 중...")
+        
+        # Step 1: 각 센서별 가중치 적용 및 합계
+        result_ctxt = heaan.Ciphertext(self.context)
+        self._initialize_zero_ciphertext(result_ctxt)
+        
+        for sensor_id in range(self.SENSOR_COUNT):
+            print(f"  Processing sensor {sensor_id}...")
+            
+            # 가중치 벡터 생성
+            weights_ctxt = self.create_weight_vector(weights)
+            
+            # 센서 데이터와 가중치 곱셈
+            weighted_data = heaan.Ciphertext(self.context)
+            self.eval.mult(interpolated_data[sensor_id], weights_ctxt, weighted_data)
+            
+            # 전체 합계에 누적
+            temp_result = heaan.Ciphertext(self.context)
+            self.eval.add(result_ctxt, weighted_data, temp_result)
+            result_ctxt = temp_result
+        
+        # 편향 추가
+        bias_ctxt = self.create_bias_vector(bias)
+        linear_output = heaan.Ciphertext(self.context)
+        self.eval.add(result_ctxt, bias_ctxt, linear_output)
+        
+        # 시그모이드 적용
+        sigmoid_result = self._sigmoid_approximation(linear_output)
+        
+        # 오차 계산: error = y_true - y_pred
+        error = heaan.Ciphertext(self.context)
+        self.eval.sub(y_ctxt, sigmoid_result, error)
+        
+        return sigmoid_result, error
