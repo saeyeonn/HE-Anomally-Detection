@@ -5,7 +5,67 @@ import pandas as pd
 import numpy as np
 import math
 import time
+
+
+def main():
+    # 데이터 생성 
+    sensor_data = np.random.randn(5, 300)
+    print("sensor_data....")
+    print(sensor_data)
+    nan_masks = np.random.choice([0, 1], size=(5, 300), p=[0.7, 0.3])
+    print("nan_masks...")
+    print(nan_masks)
     
+    # 타임스탬프 배열 생성 - DATA_SIZE와 맞춤 (300개)
+    timestamps = [f"2024-01-01T{i//3600:02d}:{(i%3600)//60:02d}:{i%60:02d}" for i in range(300)]
+    print("timestamps...")
+    print(timestamps[:10])  # 처음 10개만 출력
+    
+    # y_labels를 300개로 확장 (랜덤하게 0과 1 생성)
+    y_labels = np.random.choice([0, 1], size=300, p=[0.7, 0.3])  # 30% anomaly
+    print("y_labels...")
+    print(y_labels[:20])  # 처음 20개만 출력
+    
+    # 로지스틱 회귀 파라미터 
+    initial_weights = np.random.randn(300)
+    initial_bias = 0.1
+    
+    # 처리기 초기화
+    processor = PiHEAANSensorProcessor()
+    
+    # 센서 데이터 처리
+    threshold = 0.5
+    
+    results = processor.process_sensor_data_with_training(
+        sensor_data, nan_masks, initial_weights, initial_bias,
+        y_labels, timestamps, learning_rate=0.1, num_steps=3, threshold=0.5
+    )
+    
+    # 결과 출력 - 처음 20개만
+    print("\n=== 최종 이상치 탐지 결과 (처음 20개) ===")
+    for i, (timestamp, is_anomaly) in enumerate(results[:20]):
+        if i < len(y_labels):
+            actual = "ANOMALY" if y_labels[i] == 1 else "NORMAL"
+            predicted = "ANOMALY" if is_anomaly else "NORMAL"
+            match = "✓" if (y_labels[i] == 1) == is_anomaly else "✗"
+            print(f"{i:3d}: {timestamp} - Actual: {actual:7s}, Predicted: {predicted:7s} {match}")
+    
+    # 정확도 계산
+    if len(results) > 0:
+        correct = 0
+        total = min(len(results), len(y_labels))
+        for i in range(total):
+            predicted_anomaly = results[i][1]
+            actual_anomaly = y_labels[i] == 1
+            if predicted_anomaly == actual_anomaly:
+                correct += 1
+        
+        accuracy = correct / total * 100
+        print(f"\n전체 정확도: {accuracy:.2f}% ({correct}/{total})")
+        
+    
+########################################################
+
         
 class PiHEAANSensorProcessor:
     def __init__(self, key_file_path="./keys"):
@@ -674,3 +734,7 @@ class PiHEAANSensorProcessor:
         print(f"Constant vector created: all slots = {debug_msg[0]}")
         
         return const_ctxt
+    
+
+if __name__ == "__main__":
+    main()
