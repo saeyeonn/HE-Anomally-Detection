@@ -8,27 +8,9 @@ import time
 
 
 def main():
-    # # 데이터 생성 
-    # sensor_data = np.random.randn(5, 300)
-    # print("sensor_data....")
-    # print(sensor_data)
-    # nan_masks = np.random.choice([0, 1], size=(5, 300), p=[0.7, 0.3])
-    # print("nan_masks...")
-    # print(nan_masks)
-    
-    # # 타임스탬프 배열 생성 - DATA_SIZE와 맞춤 (300개)
-    # timestamps = [f"2024-01-01T{i//3600:02d}:{(i%3600)//60:02d}:{i%60:02d}" for i in range(300)]
-    # print("timestamps...")
-    # print(timestamps[:10])  # 처음 10개만 출력
-    
-    # # y_labels를 300개로 확장 (랜덤하게 0과 1 생성)
-    # y_labels = np.random.choice([0, 1], size=300, p=[0.7, 0.3])  # 30% anomaly
-    # print("y_labels...")
-    # print(y_labels[:20])  # 처음 20개만 출력
-    
     # 로지스틱 회귀 파라미터 
-    initial_weights = np.random.randn(300)
-    initial_bias = 0.1
+    initial_weights = np.random.randn(300) * 0.0001
+    initial_bias = 0.0
     
     # 처리기 초기화
     processor = PiHEAANSensorProcessor()
@@ -65,12 +47,12 @@ def main():
     
     results = processor.process_sensor_data_with_training(
         sensor_data, nan_masks, initial_weights, initial_bias,
-        y_labels, timestamps, learning_rate=0.1, num_steps=3, threshold=0.5
+        y_labels, timestamps, learning_rate=0.001, num_steps=10, threshold=0.5
     )
     
     # 결과 출력 - 처음 20개만
-    print("\n=== 최종 이상치 탐지 결과 (처음 20개) ===")
-    for i, (timestamp, is_anomaly) in enumerate(results[:20]):
+    print("\n=== 최종 이상치 탐지 결과 ===")
+    for i, (timestamp, is_anomaly) in enumerate(results):
         if i < len(y_labels):
             actual = "ANOMALY" if y_labels[i] == 1 else "NORMAL"
             predicted = "ANOMALY" if is_anomaly else "NORMAL"
@@ -215,11 +197,8 @@ class PiHEAANSensorProcessor:
         # 6. nan_masks 생성 (-999 위치를 1로, 정상 데이터는 0으로)
         nan_masks = (sensor_data == missing_value).astype(int)
         print(f"Missing values (-999) count: {np.sum(nan_masks)} / {nan_masks.size}")
-        
-        # 7. -999를 0으로 치환 (암호화용)
-        sensor_data[sensor_data == missing_value] = 0.0
-        
-        # 8. y_labels 추출 (있는 경우)
+                
+        # 7. y_labels 추출 (있는 경우)
         y_labels = None
         if label_column and label_column in df.columns:
             y_labels = df[label_column].values
@@ -275,7 +254,7 @@ class PiHEAANSensorProcessor:
         encrypted_data = []
         plaintext_nan_masks = []
         
-        ctxt_scale = self.create_constant_vector(10000.0)
+        ctxt_scale = self.create_constant_vector(0.01)
         print(f"Created scaling factor ciphertext: {ctxt_scale}")
         
         for sensor_id in range(self.SENSOR_COUNT):
@@ -495,7 +474,7 @@ class PiHEAANSensorProcessor:
             
             # 역전파 및 가중치 업데이트
             updated_weights = self._backward_step(
-                interpolated_data, error, learning_rate
+                interpolated_data, error, learning_rate, current_weights
             )
             
             current_weights = updated_weights
@@ -516,71 +495,60 @@ class PiHEAANSensorProcessor:
     
     
     def _forward_step(self, interpolated_data, weights, bias, y_ctxt):
-        """순전파: 예측값 계산 및 오차 계산"""
         print("Forward step: 예측값 계산 중...")
         
-        # Step 1: 각 센서별 가중치 적용 및 합계
-        result_ctxt = heaan.Ciphertext(self.context)
-        self._initialize_zero_ciphertext(result_ctxt)
+        # 선형 조합 계산: w1*sensor1 + w2*sensor2 + ... + w5*sensor5 + bias
+        result_ctxt = self.create_constant_vector(bias)  # bias로 초기화
         
         for sensor_id in range(self.SENSOR_COUNT):
-            print(f"  Processing sensor {sensor_id}...")
+            print(f"  Processing sensor {sensor_id} with weight {weights[sensor_id]}...")
             
-            # 가중치 벡터 생성
-            weights_ctxt = self.create_weight_vector(weights)
+            # 개별 센서 데이터에 해당 가중치 곱하기
+            weighted_sensor = heaan.Ciphertext(self.context)
+            self.eval.mult(interpolated_data[sensor_id], weights[sensor_id], weighted_sensor)
             
-            # 센서 데이터와 가중치 곱셈
-            weighted_data = heaan.Ciphertext(self.context)
-            self.eval.mult(interpolated_data[sensor_id], weights_ctxt, weighted_data)
-            
-            # 전체 합계에 누적
+            # 결과에 누적
             temp_result = heaan.Ciphertext(self.context)
-            self.eval.add(result_ctxt, weighted_data, temp_result)
+            self.eval.add(result_ctxt, weighted_sensor, temp_result)
             result_ctxt = temp_result
         
-        # 편향 추가
-        bias_ctxt = self.create_bias_vector(bias)
-        linear_output = heaan.Ciphertext(self.context)
-        self.eval.add(result_ctxt, bias_ctxt, linear_output)
-        
         # 시그모이드 적용
-        sigmoid_result = self._sigmoid_approximation(linear_output)
+        sigmoid_result = self._sigmoid_approximation(result_ctxt)
         
-        # 오차 계산: error = y_true - y_pred
+        # 오차 계산
         error = heaan.Ciphertext(self.context)
         self.eval.sub(y_ctxt, sigmoid_result, error)
         
         return sigmoid_result, error
     
-    def _backward_step(self, interpolated_data, error, learning_rate):
-        """역전파: 그래디언트 계산 및 가중치 업데이트"""
-        print("Backward step: 가중치 업데이트 중...")
-        
+    
+    def _backward_step(self, interpolated_data, error, learning_rate, current_weights):
         updated_weights = []
+        max_gradient = 1.0 
         
         for sensor_id in range(self.SENSOR_COUNT):
-            print(f"  Computing gradient for sensor {sensor_id}...")
-            
-            # 오차와 센서 데이터의 곱 (그래디언트)
+            # 그래디언트 계산
             gradient = heaan.Ciphertext(self.context)
             self.eval.mult(interpolated_data[sensor_id], error, gradient)
             
-            # 그래디언트 합계 계산
             gradient_sum = self._sum_all_elements(gradient)
-            
-            # 학습률 적용: gradient_sum * learning_rate / DATA_SIZE
             learning_factor = learning_rate / self.DATA_SIZE
             scaled_gradient = heaan.Ciphertext(self.context)
             self.eval.mult(gradient_sum, learning_factor, scaled_gradient)
             
-            # 그래디언트를 평문으로 복호화하여 가중치 업데이트에 사용
+            # 그래디언트를 복호화
             gradient_msg = heaan.Message(self.log_slots)
             self.dec.decrypt(scaled_gradient, self.sk, gradient_msg)
-            gradient_value = gradient_msg[0]
+            gradient_value = gradient_msg[0].real if hasattr(gradient_msg[0], 'real') else gradient_msg[0]
+            # gradient_value = max(-max_gradient, min(max_gradient, gradient_value))
+            print(f"  Sensor {sensor_id}: gradient = {gradient_value}")
             
-            updated_weights.append(gradient_value)
+            # 가중치 업데이트 (현재 가중치 + 학습률 * 그래디언트)
+            new_weight = current_weights[sensor_id] - learning_rate * gradient_value
+            updated_weights.append(new_weight)
         
-        return updated_weights 
+        return updated_weights
+        
    
     def _sigmoid_approximation(self, x):
         """시그모이드 함수 근사 (체비셰프 다항식)"""
@@ -622,7 +590,8 @@ class PiHEAANSensorProcessor:
         print(f"Sigmoid result: {debug_msg[0]}")
         
         return final_result
-    
+
+
     def _sum_all_elements(self, ctxt):
         """Ciphertext의 모든 슬롯 합계 계산 (로테이션 사용)"""
         result = heaan.Ciphertext(self.context)
@@ -639,7 +608,6 @@ class PiHEAANSensorProcessor:
             step *= 2
     
         return result
-
 
     def _initialize_zero_ciphertext(self, ctxt):
         """Ciphertext를 0으로 초기화"""
@@ -853,7 +821,7 @@ class PiHEAANSensorProcessor:
         print(f"Creating constant vector with value {constant_value}...")
         
         # Message 객체 생성
-        const_msg = heaan.Message(self.log_slots)
+        const_msg = heaan.Message(self.log_slots, 0.5)
         
         # 모든 슬롯에 상수 값 설정
         for i in range(2**self.log_slots):
