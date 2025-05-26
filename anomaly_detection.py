@@ -308,3 +308,44 @@ class PiHEAANSensorProcessor:
         self.eval.sub(y_ctxt, sigmoid_result, error)
         
         return sigmoid_result, error
+    
+    def _sigmoid_approximation(self, x):
+        """시그모이드 함수 근사 (체비셰프 다항식)"""
+        # sigmoid(x) ≈ 0.5 + 0.25*x - 0.0625*x^3
+        print("Applying sigmoid approximation...")
+        
+        # x^2 계산
+        x_squared = heaan.Ciphertext(self.context)
+        self.eval.square(x, x_squared)
+        
+        # x^3 계산
+        x_cubed = heaan.Ciphertext(self.context)
+        self.eval.mult(x_squared, x, x_cubed)
+        
+        # 0.25 * x
+        term1 = heaan.Ciphertext(self.context)
+        self.eval.mult(x, 0.25, term1)
+        
+        # -0.0625 * x^3
+        term2 = heaan.Ciphertext(self.context)
+        self.eval.mult(x_cubed, -0.0625, term2)
+        
+        # 0.5 상수 추가
+        const_msg = heaan.Message(self.log_slots)
+        const_msg[0] = 0.5
+        const_ctxt = heaan.Ciphertext(self.context)
+        self.enc.encrypt(const_msg, self.sk, const_ctxt)
+        
+        # 모든 항 더하기: 0.5 + 0.25*x - 0.0625*x^3
+        temp_result = heaan.Ciphertext(self.context)
+        self.eval.add(term1, term2, temp_result)
+        
+        final_result = heaan.Ciphertext(self.context)
+        self.eval.add(temp_result, const_ctxt, final_result)
+        
+        # 디버깅: 시그모이드 결과 확인
+        debug_msg = heaan.Message(self.log_slots)
+        self.dec.decrypt(final_result, self.sk, debug_msg)
+        print(f"Sigmoid result: {debug_msg[0]}")
+        
+        return final_result
