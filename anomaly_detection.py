@@ -452,3 +452,91 @@ class PiHEAANSensorProcessor:
         print(f"Verification - first 5 values: {[debug_msg[i] for i in range(5)]}")
         
         return bias_ctxt
+    
+    def create_single_bias_value(self, bias_value):
+        """
+        편향 값을 첫 번째 슬롯에만 설정한 벡터 생성
+        
+        Args:
+            bias_value: float - 편향 값
+            
+        Returns:
+            heaan.Ciphertext - 암호화된 편향 벡터 [bias, 0, 0, ...]
+        """
+        print(f"Creating single bias value {bias_value}...")
+        
+        # Message 객체 생성
+        bias_msg = heaan.Message(self.log_slots)
+        
+        # 첫 번째 슬롯에만 bias 값 설정
+        bias_msg[0] = bias_value
+        
+        # 나머지 슬롯은 0으로 설정
+        for i in range(1, 2**self.log_slots):
+            bias_msg[i] = 0.0
+        
+        # 암호화
+        bias_ctxt = heaan.Ciphertext(self.context)
+        self.enc.encrypt(bias_msg, self.sk, bias_ctxt)
+        
+        # 디버깅: 생성된 값 확인
+        debug_msg = heaan.Message(self.log_slots)
+        self.dec.decrypt(bias_ctxt, self.sk, debug_msg)
+        
+        print(f"Single bias value created: slot[0] = {debug_msg[0]}")
+        print(f"Other slots: {[debug_msg[i] for i in range(1, 5)]} (should be 0)")
+        
+        return bias_ctxt
+
+
+    def create_repeated_weights(self, weights, repeat_times):
+        """
+        가중치 패턴을 여러 번 반복한 벡터 생성
+        
+        Args:
+            weights: list - 반복할 가중치 패턴
+            repeat_times: int - 반복 횟수
+            
+        Returns:
+            heaan.Ciphertext - [w1,w2,w3, w1,w2,w3, w1,w2,w3, ...] 형태
+        """
+        print(f"Creating repeated weights: {len(weights)} weights × {repeat_times} times...")
+        
+        # Message 객체 생성
+        repeated_msg = heaan.Message(self.log_slots)
+        
+        weight_len = len(weights)
+        slot_idx = 0
+        
+        # 지정된 횟수만큼 가중치 패턴 반복
+        for repeat in range(repeat_times):
+            for i in range(weight_len):
+                if slot_idx < 2**self.log_slots:
+                    repeated_msg[slot_idx] = weights[i]
+                    slot_idx += 1
+                else:
+                    print(f"Warning: Reached slot capacity {2**self.log_slots}")
+                    break
+            
+            if slot_idx >= 2**self.log_slots:
+                break
+        
+        # 나머지 슬롯은 0으로 설정
+        for i in range(slot_idx, 2**self.log_slots):
+            repeated_msg[i] = 0.0
+        
+        # 암호화
+        repeated_ctxt = heaan.Ciphertext(self.context)
+        self.enc.encrypt(repeated_msg, self.sk, repeated_ctxt)
+        
+        # 디버깅: 반복 패턴 확인
+        debug_msg = heaan.Message(self.log_slots)
+        self.dec.decrypt(repeated_ctxt, self.sk, debug_msg)
+        
+        print(f"Repeated weights created: total {slot_idx} values")
+        print(f"First pattern: {[debug_msg[i] for i in range(min(weight_len, 10))]}")
+        
+        if repeat_times > 1 and slot_idx > weight_len:
+            print(f"Second pattern: {[debug_msg[i] for i in range(weight_len, min(2*weight_len, slot_idx))]}")
+        
+        return repeated_ctxt
