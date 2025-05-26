@@ -842,6 +842,24 @@ class PiHEAANSensorProcessor:
         
         return const_ctxt
     
+    def _print_step_results(self, step_num, sigmoid_result, error):
+        """각 Step의 중간 결과 출력"""
+        print(f"\n--- Step {step_num} 결과 ---")
+        
+        # 시그모이드 결과 확인
+        sigmoid_msg = heaan.Message(self.log_slots)
+        self.dec.decrypt(sigmoid_result, self.sk, sigmoid_msg)
+        print(f"Sigmoid predictions (first 5): {[sigmoid_msg[i] for i in range(5)]}")
+        
+        # 오차 확인
+        error_msg = heaan.Message(self.log_slots)
+        self.dec.decrypt(error, self.sk, error_msg)
+        print(f"Errors (first 5): {[error_msg[i] for i in range(5)]}")
+        
+        # 평균 오차 계산
+        avg_error = sum(error_msg[i] for i in range(self.DATA_SIZE)) / self.DATA_SIZE
+        print(f"Average error: {avg_error:.4f}")
+
 
     def _generate_final_results(self, predictions, timestamps, threshold):
         """최종 예측 결과를 timestamp별 anomaly 결과로 변환"""
