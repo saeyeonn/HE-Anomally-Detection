@@ -540,3 +540,60 @@ class PiHEAANSensorProcessor:
             print(f"Second pattern: {[debug_msg[i] for i in range(weight_len, min(2*weight_len, slot_idx))]}")
         
         return repeated_ctxt
+    
+    
+    def create_zero_vector(self):
+        """
+        모든 슬롯이 0인 벡터 생성
+        
+        Returns:
+            heaan.Ciphertext - [0, 0, 0, ...]
+        """
+        print("Creating zero vector...")
+        
+        # Message 객체 생성
+        zero_msg = heaan.Message(self.log_slots)
+        
+        # 모든 슬롯을 0으로 설정
+        for i in range(2**self.log_slots):
+            zero_msg[i] = 0.0
+        
+        # 암호화
+        zero_ctxt = heaan.Ciphertext(self.context)
+        self.enc.encrypt(zero_msg, self.sk, zero_ctxt)
+        
+        print("Zero vector created")
+        
+        return zero_ctxt
+
+
+    def create_constant_vector(self, constant_value):
+        """
+        모든 슬롯이 동일한 상수값인 벡터 생성
+        
+        Args:
+            constant_value: float - 설정할 상수 값
+            
+        Returns:
+            heaan.Ciphertext - [constant, constant, constant, ...]
+        """
+        print(f"Creating constant vector with value {constant_value}...")
+        
+        # Message 객체 생성
+        const_msg = heaan.Message(self.log_slots)
+        
+        # 모든 슬롯에 상수 값 설정
+        for i in range(2**self.log_slots):
+            const_msg[i] = constant_value
+        
+        # 암호화
+        const_ctxt = heaan.Ciphertext(self.context)
+        self.enc.encrypt(const_msg, self.sk, const_ctxt)
+        
+        # 디버깅: 값 확인
+        debug_msg = heaan.Message(self.log_slots)
+        self.dec.decrypt(const_ctxt, self.sk, debug_msg)
+        
+        print(f"Constant vector created: all slots = {debug_msg[0]}")
+        
+        return const_ctxt
