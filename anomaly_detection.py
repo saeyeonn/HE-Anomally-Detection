@@ -121,6 +121,34 @@ class PiHEAANSensorProcessor:
         return encrypted_data, plaintext_nan_masks
     
     
+    def interpolate_all_sensors(self, encrypted_data, plaintext_nan_masks):
+        interpolated_data = []
+        
+        for sensor_id in range(self.SENSOR_COUNT):
+            print("\n")
+            print(f"Interpolating sensor {sensor_id}...")
+            interpolated = self._interpolate_single_sensor(
+                encrypted_data[sensor_id], 
+                plaintext_nan_masks[sensor_id]
+            )
+            interpolated_data.append(interpolated)
+            
+            
+            msg_data = heaan.Message(self.log_slots)
+    
+            # debug
+            # print("decrypted_data")
+            
+            # self.dec.decrypt(interpolated, self.sk, msg_data)
+            # for i in range(10):
+            #     print(msg_data[i]) 
+            
+            # print("plaintext_nan_masks")
+            # print(plaintext_nan_masks)
+        
+        return interpolated_data
+    
+    
     def _interpolate_single_sensor(self, enc_data, enc_mask):
         result = heaan.Ciphertext(self.context)
         result = enc_data
