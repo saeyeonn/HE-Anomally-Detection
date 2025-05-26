@@ -37,13 +37,14 @@ def main():
     threshold = 0.5
     
     # CSV에서 데이터 로드
-    csv_path = "your_data.csv"  # 여기에 실제 CSV 경로 입력
+    csv_path = "./dataset/df_final_timestamp.csv"  
     
     # CSV 로드 (라벨과 타임스탬프 컬럼명 지정 가능)
     sensor_data, nan_masks, y_labels, timestamps = processor.load_csv_to_sensor_data(
-        csv_path, 
-        label_column='label',  
-        timestamp_column='timestamp' 
+        csv_path,
+        label_column=None,  # 라벨 컬럼이 없으므로 None
+        timestamp_column='SensorTime',  # CSV의 실제 타임스탬프 컬럼명
+        missing_value=-999
     )
     
     print("sensor_data....")
@@ -171,7 +172,7 @@ class PiHEAANSensorProcessor:
     
     ##########################################################
     
-    def load_csv_to_sensor_data(csv_path, label_column=None, timestamp_column='SensorTime', missing_value=-999):
+    def load_csv_to_sensor_data(self, csv_path, label_column=None, timestamp_column='SensorTime', missing_value=-999):
         """
         CSV 파일을 로드해서 기존 코드 형태로 변환
         
@@ -289,7 +290,7 @@ class PiHEAANSensorProcessor:
             # 암호화
             ctxt_data = heaan.Ciphertext(self.context)
             self.enc.encrypt(msg_data, self.sk, ctxt_data)
-            self.evaluator.mult(ctxt_data, ctxt_scale, ctxt_data)
+            self.eval.mult(ctxt_data, ctxt_scale, ctxt_data)
             
             encrypted_data.append(ctxt_data)
             # NaN 마스크는 평문으로 저장
@@ -551,6 +552,7 @@ class PiHEAANSensorProcessor:
         
         return sigmoid_result, error
     
+   
     def _sigmoid_approximation(self, x):
         """시그모이드 함수 근사 (체비셰프 다항식)"""
         # sigmoid(x) ≈ 0.5 + 0.25*x - 0.0625*x^3
@@ -840,6 +842,34 @@ class PiHEAANSensorProcessor:
         
         return const_ctxt
     
+
+    def _generate_final_results(self, predictions, timestamps, threshold):
+        """최종 예측 결과를 timestamp별 anomaly 결과로 변환"""
+        print("Generating final anomaly detection results...")
+        
+        # 예측값 복호화
+        pred_msg = heaan.Message(self.log_slots)
+        self.dec.decrypt(predictions, self.sk, pred_msg)
+        
+        anomaly_results = []
+        
+        for i in range(self.DATA_SIZE):
+            if i < len(timestamps):
+                timestamp = timestamps[i]
+            else:
+                timestamp = f"timestamp_{i}"
+            
+            prediction = pred_msg[i].real if hasattr(pred_msg[i], 'real') else pred_msg[i]
+            is_anomaly = prediction > threshold
+            
+            anomaly_results.append([timestamp, is_anomaly])
+            
+            if i < 10:  # 처음 10개만 출력
+                print(f"  {timestamp}: prediction={prediction:.4f}, anomaly={is_anomaly}")
+        
+        return anomaly_results
+
+        
 
 if __name__ == "__main__":
     main()
