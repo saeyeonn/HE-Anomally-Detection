@@ -8,23 +8,23 @@ import time
 
 
 def main():
-    # 데이터 생성 
-    sensor_data = np.random.randn(5, 300)
-    print("sensor_data....")
-    print(sensor_data)
-    nan_masks = np.random.choice([0, 1], size=(5, 300), p=[0.7, 0.3])
-    print("nan_masks...")
-    print(nan_masks)
+    # # 데이터 생성 
+    # sensor_data = np.random.randn(5, 300)
+    # print("sensor_data....")
+    # print(sensor_data)
+    # nan_masks = np.random.choice([0, 1], size=(5, 300), p=[0.7, 0.3])
+    # print("nan_masks...")
+    # print(nan_masks)
     
-    # 타임스탬프 배열 생성 - DATA_SIZE와 맞춤 (300개)
-    timestamps = [f"2024-01-01T{i//3600:02d}:{(i%3600)//60:02d}:{i%60:02d}" for i in range(300)]
-    print("timestamps...")
-    print(timestamps[:10])  # 처음 10개만 출력
+    # # 타임스탬프 배열 생성 - DATA_SIZE와 맞춤 (300개)
+    # timestamps = [f"2024-01-01T{i//3600:02d}:{(i%3600)//60:02d}:{i%60:02d}" for i in range(300)]
+    # print("timestamps...")
+    # print(timestamps[:10])  # 처음 10개만 출력
     
-    # y_labels를 300개로 확장 (랜덤하게 0과 1 생성)
-    y_labels = np.random.choice([0, 1], size=300, p=[0.7, 0.3])  # 30% anomaly
-    print("y_labels...")
-    print(y_labels[:20])  # 처음 20개만 출력
+    # # y_labels를 300개로 확장 (랜덤하게 0과 1 생성)
+    # y_labels = np.random.choice([0, 1], size=300, p=[0.7, 0.3])  # 30% anomaly
+    # print("y_labels...")
+    # print(y_labels[:20])  # 처음 20개만 출력
     
     # 로지스틱 회귀 파라미터 
     initial_weights = np.random.randn(300)
@@ -35,6 +35,32 @@ def main():
     
     # 센서 데이터 처리
     threshold = 0.5
+    
+    # CSV에서 데이터 로드
+    csv_path = "your_data.csv"  # 여기에 실제 CSV 경로 입력
+    
+    # CSV 로드 (라벨과 타임스탬프 컬럼명 지정 가능)
+    sensor_data, nan_masks, y_labels, timestamps = processor.load_csv_to_sensor_data(
+        csv_path, 
+        label_column='label',  
+        timestamp_column='timestamp' 
+    )
+    
+    print("sensor_data....")
+    print(sensor_data)
+    print("nan_masks...")
+    print(nan_masks)
+    print("timestamps...")
+    print(timestamps[:10])  # 처음 10개만 출력
+    
+    if y_labels is not None:
+        print("y_labels...")
+        print(y_labels[:20])  # 처음 20개만 출력
+    else:
+        # 라벨이 없으면 랜덤 생성 (기존과 동일)
+        y_labels = np.random.choice([0, 1], size=sensor_data.shape[1], p=[0.7, 0.3])
+        print("Generated random y_labels...")
+        print(y_labels[:20])
     
     results = processor.process_sensor_data_with_training(
         sensor_data, nan_masks, initial_weights, initial_bias,
@@ -143,46 +169,78 @@ class PiHEAANSensorProcessor:
         self.bootstrapper.bootstrap(ctxt, result)
         return result
     
+    ##########################################################
     
-    def encrypt_sensor_data(self, sensor_data, nan_masks):
-        # 각 센서별로 약 1567개 타임스탬프 데이터를 하나의 Ciphertext에 저장
-        encrypted_data = []
-        plaintext_nan_masks = []
+    def load_csv_to_sensor_data(csv_path, label_column=None, timestamp_column=None):
+        """
+        CSV 파일을 로드해서 기존 코드 형태로 변환
         
-        for sensor_id in range(self.SENSOR_COUNT):
-            # 현재 센서의 데이터를 메시지에 저장
-            msg_data = heaan.Message(self.log_slots)
-            
-            # 데이터를 슬롯에 저장
-            for i in range(min(self.DATA_SIZE, 2 ** self.log_slots)):
-                # NaN 위치는 1로 설정
-                msg_data[i] = sensor_data[sensor_id, i] if nan_masks[sensor_id, i] == 0 else 1.0
-            
-            # 암호화
-            ctxt_data = heaan.Ciphertext(self.context)
-            self.enc.encrypt(msg_data, self.sk, ctxt_data)
-            
-            encrypted_data.append(ctxt_data)
-            # NaN 마스크는 평문으로 저장
-            plaintext_nan_masks.append(nan_masks[sensor_id].copy())
-
-        msg_data = heaan.Message(self.log_slots)
+        Args:
+            csv_path: CSV 파일 경로
+            label_column: 라벨 컬럼명 (제외할 컬럼)
+            timestamp_column: 타임스탬프 컬럼명 (제외할 컬럼)
         
-        # debug
-        # print("encrypted_data")
-        # print(encrypted_data)
+        Returns:
+            sensor_data: (n_sensors, n_samples) 형태의 센서 데이터
+            nan_masks: (n_sensors, n_samples) 형태의 NaN 마스크
+            y_labels: 라벨 배열 (있는 경우)
+            timestamps: 타임스탬프 리스트
+        """
+        print(f"Loading CSV: {csv_path}")
         
-        # self.dec.decrypt(encrypted_data[0], self.sk, msg_data)
-        # print(msg_data)
+        # 1. CSV 파일 로드
+        df = pd.read_csv(csv_path)
+        print(f"Original shape: {df.shape} (rows x columns)")
+        print(f"Columns: {list(df.columns)}")
         
-        # print("plaintext_nan_masks")
-        # print(plaintext_nan_masks)
+        # 2. 숫자형 컬럼만 선택 (센서 데이터용)
+        numeric_columns = df.select_dtypes(include=[np.number]).columns.tolist()
         
-        return encrypted_data, plaintext_nan_masks
+        # 라벨 컬럼 제외
+        if label_column and label_column in numeric_columns:
+            numeric_columns.remove(label_column)
+        
+        # 타임스탬프가 숫자형이면 제외
+        if timestamp_column and timestamp_column in numeric_columns:
+            numeric_columns.remove(timestamp_column)
+        
+        print(f"Sensor columns ({len(numeric_columns)}): {numeric_columns}")
+        
+        # 3. sensor_data 생성 (센서 x 샘플) 형태
+        sensor_data = df[numeric_columns].values.T  # 전치해서 (센서, 샘플) 형태로
+        print(f"Sensor data shape: {sensor_data.shape} (sensors x samples)")
+        
+        # 4. nan_masks 생성
+        nan_masks = np.isnan(sensor_data).astype(int)
+        print(f"NaN count: {np.sum(nan_masks)} / {nan_masks.size}")
+        
+        # NaN을 0으로 치환
+        sensor_data = np.nan_to_num(sensor_data, nan=0.0)
+        
+        # 5. y_labels 추출 (있는 경우)
+        y_labels = None
+        if label_column and label_column in df.columns:
+            y_labels = df[label_column].values
+            print(f"Labels shape: {y_labels.shape}")
+        else:
+            print("No labels found")
+        
+        # 6. timestamps 추출 (있는 경우)
+        timestamps = None
+        if timestamp_column and timestamp_column in df.columns:
+            timestamps = df[timestamp_column].tolist()
+        else:
+            # 타임스탬프가 없으면 인덱스 기반으로 생성
+            timestamps = [f"sample_{i:06d}" for i in range(len(df))]
+        
+        print(f"Final: {sensor_data.shape[0]} sensors x {sensor_data.shape[1]} samples")
+        
+        return sensor_data, nan_masks, y_labels, timestamps
     
     
     ######################################################
-    
+
+
     def process_sensor_data_with_training(self, sensor_data, nan_masks, initial_weights, initial_bias, 
                                     y_labels, timestamps, learning_rate=0.01, num_steps=5, threshold=0.5):
         """학습을 포함한 전체 센서 데이터 처리 파이프라인"""
@@ -206,6 +264,49 @@ class PiHEAANSensorProcessor:
         return anomaly_results
     
     ##########################################################
+    
+    def encrypt_sensor_data(self, sensor_data, nan_masks):
+        # 각 센서별로 약 1567개 타임스탬프 데이터를 하나의 Ciphertext에 저장
+        encrypted_data = []
+        plaintext_nan_masks = []
+        
+        ctxt_scale = self.create_constant_vector(10000.0)
+        print(f"Created scaling factor ciphertext: {ctxt_scale}")
+        
+        for sensor_id in range(self.SENSOR_COUNT):
+            # 현재 센서의 데이터를 메시지에 저장
+            msg_data = heaan.Message(self.log_slots)
+            
+            # 데이터를 슬롯에 저장
+            for i in range(min(self.DATA_SIZE, 2 ** self.log_slots)):
+                # NaN 위치는 1로 설정
+                msg_data[i] = sensor_data[sensor_id, i] if nan_masks[sensor_id, i] == 0 else 1.0
+            
+            # 암호화
+            ctxt_data = heaan.Ciphertext(self.context)
+            self.enc.encrypt(msg_data, self.sk, ctxt_data)
+            self.evaluator.mult(ctxt_data, ctxt_scale, ctxt_data)
+            
+            encrypted_data.append(ctxt_data)
+            # NaN 마스크는 평문으로 저장
+            plaintext_nan_masks.append(nan_masks[sensor_id].copy())
+
+        msg_data = heaan.Message(self.log_slots)
+        
+        # debug
+        # print("encrypted_data")
+        # print(encrypted_data)
+        
+        # self.dec.decrypt(encrypted_data[0], self.sk, msg_data)
+        # print(msg_data)
+        
+        # print("plaintext_nan_masks")
+        # print(plaintext_nan_masks)
+        
+        return encrypted_data, plaintext_nan_masks
+    
+    
+    ######################################################
     
     def interpolate_all_sensors(self, encrypted_data, plaintext_nan_masks):
         interpolated_data = []
