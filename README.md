@@ -1,5 +1,7 @@
 # Secure Sensor Data Interpolation and Anomaly Detection with Homomorphic Encryption
 
+<br>
+
 ## 📋 Project Overview
 
 This project implements a **privacy-preserving sensor data analysis system** using homomorphic encryption (HE) for industrial IoT environments. The system enables secure interpolation of missing sensor values and anomaly detection without exposing sensitive manufacturing data.
@@ -12,6 +14,8 @@ This project implements a **privacy-preserving sensor data analysis system** usi
 - **Web Interface**: User-friendly web application for data upload and analysis
 - **Privacy Protection**: No decryption required during analysis phase
 
+<br>
+
 ## 🏭 Problem Statement
 
 Industrial sensor data contains critical information about:
@@ -20,6 +24,8 @@ Industrial sensor data contains critical information about:
 - Line efficiency metrics and cost structure information
 
 Traditional security methods (TLS, Secure Boot, Access Control) require decryption during analysis, creating security vulnerabilities. Our solution maintains data privacy throughout the entire analysis pipeline.
+
+<br>
 
 ## 🔧 Technical Stack
 
@@ -40,6 +46,8 @@ Traditional security methods (TLS, Secure Boot, Access Control) require decrypti
 - **Git**: Version control
 - **Docker**: Containerization (optional)
 
+<br>
+
 ## 📊 Dataset
 
 The project uses the **SECOM Dataset** from UCI Machine Learning Repository:
@@ -47,6 +55,8 @@ The project uses the **SECOM Dataset** from UCI Machine Learning Repository:
 - **590 numerical sensor measurements** (anonymized)
 - **Binary classification**: Pass (normal) / Fail (defective product)
 - **Missing values**: Naturally occurring NaN values for interpolation experiments
+
+<br>
 
 ## 🚀 How to Run
 
@@ -64,8 +74,7 @@ docker run -p 8888:8888 --rm -it cryptolabinc/heaan-stat:1.0.0-cpu
 ```
 
 ### Inside Docker Container
-Once the container is running and Jupyter is accessible at http://localhost:8888:
-bash# Open terminal in Jupyter or use docker exec
+Once the container is running open terminal in Jupyter or use docker exec
 
 ```bash
 # Clone the repository
@@ -93,6 +102,7 @@ python3 app.py # if python3 is unavailable, try 'python app.py'
 Open a web browser and navigate to http://localhost:3000
 Upload the file 'server/dataset/df_final_test.csv' to web page.
 
+<br>
 
 ## 🧮 Algorithm Details
 
@@ -105,6 +115,8 @@ Upload the file 'server/dataset/df_final_test.csv' to web page.
 - **Sigmoid Approximation**: Degree-3 Chebyshev polynomial: `σ(z) ≈ 0.5 + 0.25z - 0.0625z³`
 - **Training**: Gradient descent with encrypted gradients
 - **Prediction**: Encrypted probability scores for anomaly detection
+
+<br>
 
 ## 📈 Results
 
@@ -120,6 +132,8 @@ Upload the file 'server/dataset/df_final_test.csv' to web page.
 - Timestamp-based anomaly results
 - **Demo Video**: [YouTube Link](https://youtu.be/jL7xYZGqvxo?si=_KC1k35p9fg21Vjt)
 
+<br>
+
 ## 📚 References
 
 - [SECOM Dataset - UCI ML Repository](https://archive.ics.uci.edu/ml/datasets/SECOM)
@@ -127,9 +141,13 @@ Upload the file 'server/dataset/df_final_test.csv' to web page.
 - [Sensor Market Research](https://www.precedenceresearch.com/sensor-market)
 - [Brightics Knowledge Sharing](https://www.brightics.ai/community/knowledge-sharing/detail/7059)
 
+<br>
+
 ## 📞 Contact
 
 For questions, please open an issue or contact the development team.
+
+<br>
 
 ---
 
