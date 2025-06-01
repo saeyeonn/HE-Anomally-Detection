@@ -8,13 +8,13 @@ class CSVProcessor:
     def __init__(self):
         self.SENSOR_COUNT = 5
         
-    def load_csv_to_sensor_data(self, csv_path, label_column=None, timestamp_column='SensorTime', missing_value=-999):
+    def load_csv_to_sensor_data(self, csv_path, label_column='Pass_Fail', timestamp_column='SensorTime', missing_value=-999):
         """
         CSV 파일을 로드해서 센서 데이터 형태로 변환
         
         Args:
             csv_path: CSV 파일 경로
-            label_column: 라벨 컬럼명 (제외할 컬럼)
+            label_column: 라벨 컬럼명 (기본값: 'Pass_Fail')
             timestamp_column: 타임스탬프 컬럼명 (기본값: 'SensorTime')
             missing_value: 결측값을 나타내는 값 (기본값: -999)
         
@@ -43,6 +43,7 @@ class CSVProcessor:
         # 4. sensor_data 생성 (센서 x 샘플) 형태
         sensor_data = df[sensor_columns].values.T  # 전치해서 (센서, 샘플) 형태로
         print(f"Sensor data shape: {sensor_data.shape} (sensors x samples)")
+        actual_data_size = sensor_data.shape[1]
         
         # 5. -999를 NaN으로 처리
         sensor_data_with_nan = sensor_data.copy().astype(float)
@@ -52,13 +53,20 @@ class CSVProcessor:
         nan_masks = (sensor_data == missing_value).astype(int)
         print(f"Missing values (-999) count: {np.sum(nan_masks)} / {nan_masks.size}")
                 
-        # 7. y_labels 추출 (있는 경우)
+        # 7. y_labels 추출 (Pass_Fail 컬럼에서)
         y_labels = None
         if label_column and label_column in df.columns:
             y_labels = df[label_column].values
-            print(f"Labels shape: {y_labels.shape}")
+            print(f"Labels from '{label_column}' column: {y_labels}")
+            print(f"Label distribution - 0 (Normal): {np.sum(y_labels == 0)}, 1 (Anomaly): {np.sum(y_labels == 1)}")
         else:
-            print("No labels found")
+            print(f"Label column '{label_column}' not found in CSV")
+            if 'Pass_Fail' in df.columns:
+                print("But 'Pass_Fail' column exists, using it instead")
+                y_labels = df['Pass_Fail'].values
+                print(f"Labels from 'Pass_Fail' column: {y_labels}")
+            else:
+                print("No labels found")
         
         # 8. timestamps 추출
         timestamps = None
@@ -73,4 +81,4 @@ class CSVProcessor:
         print(f"Final: {sensor_data.shape[0]} sensors x {sensor_data.shape[1]} samples")
         print(f"Data range: [{np.min(sensor_data):.2f}, {np.max(sensor_data):.2f}]")
         
-        return sensor_data, nan_masks, y_labels, timestamps
+        return actual_data_size, sensor_data, nan_masks, y_labels, timestamps

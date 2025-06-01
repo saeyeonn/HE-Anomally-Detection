@@ -16,7 +16,7 @@ class LinearInterpolator:
         self.DATA_SIZE = crypto_processor.DATA_SIZE
         self.bootstrapper = crypto_processor.bootstrapper
     
-    def interpolate_all_sensors(self, encrypted_data, plaintext_nan_masks):
+    def interpolate_all_sensors(self, actual_data_size, encrypted_data, plaintext_nan_masks):
         """
         모든 센서 데이터에 대해 선형 보간 수행
         
@@ -32,6 +32,7 @@ class LinearInterpolator:
         for sensor_id in range(self.SENSOR_COUNT):
             print(f"Interpolating sensor {sensor_id}...")
             interpolated = self._interpolate_single_sensor(
+                actual_data_size,
                 encrypted_data[sensor_id], 
                 plaintext_nan_masks[sensor_id]
             )
@@ -39,7 +40,7 @@ class LinearInterpolator:
         
         return interpolated_data
     
-    def _interpolate_single_sensor(self, enc_data, enc_mask):
+    def _interpolate_single_sensor(self, actual_data_size, enc_data, enc_mask):
         """
         단일 센서 데이터에 대한 선형 보간
         
@@ -51,13 +52,13 @@ class LinearInterpolator:
             result: 보간된 암호화 데이터
         """
         result = enc_data
-        
+                
         # 평문 마스크로 NaN 위치 확인 및 보간
-        for i in range(self.DATA_SIZE):
+        for i in range(actual_data_size):
             if enc_mask[i] == 1:  # NaN 위치
                 # 왼쪽과 오른쪽 유효값 찾기
                 left_idx = self._find_left_valid(enc_mask, i)
-                right_idx = self._find_right_valid(enc_mask, i)
+                right_idx = self._find_right_valid(actual_data_size, enc_mask, i)
                 
                 if left_idx >= 0 and right_idx >= 0:
                     # 선형 보간
@@ -83,9 +84,9 @@ class LinearInterpolator:
                 return i
         return -1
     
-    def _find_right_valid(self, enc_mask, current_idx):
+    def _find_right_valid(self, actual_data_size, enc_mask, current_idx):
         """오른쪽의 유효한 값 찾기"""
-        for i in range(current_idx + 1, self.DATA_SIZE):
+        for i in range(current_idx + 1, actual_data_size):
             if enc_mask[i] == 0:
                 return i
         return -1

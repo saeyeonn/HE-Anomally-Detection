@@ -29,7 +29,7 @@ class DataEncryptor:
         """
         encrypted_data = []
         plaintext_nan_masks = []
-        
+        actual_data_size = min(sensor_data.shape[1], self.DATA_SIZE)
         ctxt_scale = self.create_constant_vector(0.01)
         print(f"Created scaling factor ciphertext: {ctxt_scale}")
         
@@ -38,7 +38,7 @@ class DataEncryptor:
             msg_data = self.crypto_processor.create_message()
             
             # 데이터를 슬롯에 저장
-            for i in range(min(self.DATA_SIZE, 2 ** self.log_slots)):
+            for i in range(actual_data_size):
                 # NaN 위치는 1로 설정
                 msg_data[i] = sensor_data[sensor_id, i] if nan_masks[sensor_id, i] == 0 else 1.0
             

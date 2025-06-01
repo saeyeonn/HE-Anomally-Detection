@@ -1,55 +1,136 @@
-# HE-Anomally-Detection
+# Secure Sensor Data Interpolation and Anomaly Detection with Homomorphic Encryption
 
-![image](https://github.com/user-attachments/assets/9742f9f7-04ce-41ce-8b26-0db96c3d759f)
+## 📋 Project Overview
 
-![image](https://github.com/user-attachments/assets/1f779b17-8fac-4c68-84f0-9c86ae58ee36)
+This project implements a **privacy-preserving sensor data analysis system** using homomorphic encryption (HE) for industrial IoT environments. The system enables secure interpolation of missing sensor values and anomaly detection without exposing sensitive manufacturing data.
 
-![image](https://github.com/user-attachments/assets/6ab34ee2-f9f4-452a-bd92-578bf74695c9)
+### 🎯 Key Features
 
-![image](https://github.com/user-attachments/assets/6ac1f41a-9ceb-4464-b4fc-0cd6cdaec70f)
+- **Secure Data Processing**: Homomorphic encryption enables computation on encrypted data
+- **Missing Value Interpolation**: Linear interpolation for handling sensor data gaps
+- **Anomaly Detection**: Logistic regression model for identifying defective products
+- **Web Interface**: User-friendly web application for data upload and analysis
+- **Privacy Protection**: No decryption required during analysis phase
 
-![image](https://github.com/user-attachments/assets/72f53550-a486-42a2-9888-c61419d787b7)
+## 🏭 Problem Statement
 
-![image](https://github.com/user-attachments/assets/da7a8fca-4d0a-410d-bed1-9e0e8f265e09)
+Industrial sensor data contains critical information about:
+- Production strategies and quality control intelligence
+- Equipment usage patterns and proprietary manufacturing processes
+- Line efficiency metrics and cost structure information
 
-![image](https://github.com/user-attachments/assets/409e7db4-6278-4496-a8d8-0511307a855a)
+Traditional security methods (TLS, Secure Boot, Access Control) require decryption during analysis, creating security vulnerabilities. Our solution maintains data privacy throughout the entire analysis pipeline.
 
-![image](https://github.com/user-attachments/assets/f9b439e6-fed0-4b4d-9008-d989850d3498)
+## 🔧 Technical Stack
 
-![image](https://github.com/user-attachments/assets/5e936f92-6096-43bd-92aa-a1ea94d82191)
+### Core Technologies
+- **Python 3.8+**: Main programming language
+- **HEAAN**: Homomorphic encryption library
+- **scikit-learn**: Machine learning algorithms
+- **pandas**: Data manipulation and analysis
+- **numpy**: Numerical computing
 
-![image](https://github.com/user-attachments/assets/a9c878a8-a4a3-445b-8619-003cc34dd32b)
+### Web Framework
+- **Flask**: Backend web framework
+- **HTML/CSS/JavaScript**: Frontend interface
+- **Bootstrap**: UI components
 
-![image](https://github.com/user-attachments/assets/5e3027d2-93fc-4469-9af5-c80ca35659c5)
+### Development Tools
+- **Jupyter Notebook**: Data analysis and experimentation
+- **Git**: Version control
+- **Docker**: Containerization (optional)
 
-![image](https://github.com/user-attachments/assets/569184be-daf4-4eba-bf82-de295b5e424a)
+## 📊 Dataset
 
-![image](https://github.com/user-attachments/assets/0160b3d0-4d5a-41c0-bcef-56c53f77ae85)
+The project uses the **SECOM Dataset** from UCI Machine Learning Repository:
+- **1,567 samples** from semiconductor manufacturing process
+- **590 numerical sensor measurements** (anonymized)
+- **Binary classification**: Pass (normal) / Fail (defective product)
+- **Missing values**: Naturally occurring NaN values for interpolation experiments
 
-![image](https://github.com/user-attachments/assets/1d8eb58b-e5f0-464b-b1e7-f08cb93941a2)
+## 🚀 How to Run
 
-![image](https://github.com/user-attachments/assets/a5558d87-00c6-472b-9f33-4b98103d6486)
+### Prerequisites
+```bash
+# Install Python 3.8+
+python --version
 
-![image](https://github.com/user-attachments/assets/baf2f44b-5e55-4e60-ae43-b97c69238475)
+# Install pip
+pip --version
 
-![image](https://github.com/user-attachments/assets/c21459e5-f9b9-40e5-bd45-ace3fd647951)
+# Install HeaaN stat sdk
+docker pull cryptolabinc/heaan-stat:1.0.0-cpu
+docker run -p 8888:8888 --rm -it cryptolabinc/heaan-stat:1.0.0-cpu
+```
 
-![image](https://github.com/user-attachments/assets/ee6d19d9-7aac-42af-a1ce-236e66a860a6)
+### Inside Docker Container
+Once the container is running and Jupyter is accessible at http://localhost:8888:
+bash# Open terminal in Jupyter or use docker exec
 
-![image](https://github.com/user-attachments/assets/9400312a-3853-40d0-8a9e-a428e1f6a2f5)
+```bash
+# Clone the repository
+git clone https://github.com/saeyeonn/HE-Anomally-Detection.git
+cd HE-Anomally-Detection
 
-![image](https://github.com/user-attachments/assets/de6dfef5-f2ac-4ec4-8cc7-0f6e9bfd4799)
+# Install additional dependencies if needed
+pip install scikit-learn numpy 
+pip install Flask==2.3.2
+pip install flask-cors==3.0.10
+pip install pandas==2.2.1
+```
 
-![image](https://github.com/user-attachments/assets/c3b6dbac-c1fd-4836-90b5-c368598f1c4e)
+### Run the application
+```bash
+# Frontend
+cd web/dist
+python -m http.server 3000 # if 3000 port is unavailable, change to available port number
 
-![image](https://github.com/user-attachments/assets/7f2ecd94-53b4-4864-b9fa-bd0f360c0015)
+# Backend
+cd server
+python3 app.py # if python3 is unavailable, try 'python app.py'
+```
+### Go to the Web Page
+Open a web browser and navigate to http://localhost:3000
+Upload the file 'server/dataset/df_final_test.csv' to web page.
 
-![image](https://github.com/user-attachments/assets/c5f40795-1ad2-43dc-b890-b69234c45ce5)
 
-![image](https://github.com/user-attachments/assets/ad66a1bf-0e78-45a8-bd0c-5fa196d8d9c3)
+## 🧮 Algorithm Details
 
-![image](https://github.com/user-attachments/assets/cfe09b48-46ea-4dc6-af7a-2817d6293ed8)
+### Linear Interpolation (HE)
+- **Input**: Encrypted sensor time series with missing values
+- **Process**: Homomorphic linear interpolation using only `add`, `mult`, and `sub` operations
+- **Output**: Complete encrypted time series
 
-![image](https://github.com/user-attachments/assets/c49c3794-28fa-4f9f-8202-51ff2fb4bd89)
+### Logistic Regression (HE)
+- **Sigmoid Approximation**: Degree-3 Chebyshev polynomial: `σ(z) ≈ 0.5 + 0.25z - 0.0625z³`
+- **Training**: Gradient descent with encrypted gradients
+- **Prediction**: Encrypted probability scores for anomaly detection
 
-![image](https://github.com/user-attachments/assets/1c74a6c1-9a67-40b5-8d82-6b6de966362a)
+## 📈 Results
+
+### Performance Metrics
+- **Plaintext Accuracy**: 89.17%
+- **Encrypted Accuracy**: 68.33%
+- **Privacy**: Complete data confidentiality maintained
+- **Scalability**: Suitable for small to medium sensor networks
+
+### Web Demo
+- Upload CSV sensor data(./server/dataset/df_final_test.csv)
+- Secure interpolation and analysis
+- Timestamp-based anomaly results
+- **Demo Video**: [YouTube Link](https://youtu.be/jL7xYZGqvxo?si=_KC1k35p9fg21Vjt)
+
+## 📚 References
+
+- [SECOM Dataset - UCI ML Repository](https://archive.ics.uci.edu/ml/datasets/SECOM)
+- [HEAAN Library](https://github.com/snucrypto/HEAAN)
+- [Sensor Market Research](https://www.precedenceresearch.com/sensor-market)
+- [Brightics Knowledge Sharing](https://www.brightics.ai/community/knowledge-sharing/detail/7059)
+
+## 📞 Contact
+
+For questions, please open an issue or contact the development team.
+
+---
+
+**Note**: This project was developed as part of an Information Security course focusing on privacy-preserving analytics for industrial IoT systems.
