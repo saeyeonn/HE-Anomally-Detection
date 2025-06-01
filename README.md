@@ -99,8 +99,8 @@ cd server
 python3 app.py # if python3 is unavailable, try 'python app.py'
 ```
 ### Go to the Web Page
-Open a web browser and navigate to http://localhost:3000
-Upload the file 'server/dataset/df_final_test.csv' to web page.
+- Open a web browser and navigate to http://localhost:3000
+- Upload the file 'server/dataset/df_final_test.csv' to web page.
 
 <br>
 
