@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="description" content="Secure time-series analysis with interpolation and anomaly detection using uploaded CSV data." />
+    <meta name="author" content="HE Interpolator Team" />
+    <title>HE Interpolator - Anomaly Detection</title>
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700,300italic,400italic,700italic" rel="stylesheet" />
+    <link href="css/styles.css" rel="stylesheet" />
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-light bg-light static-top">
+      <div class="container">
+        <a class="navbar-brand" href="#">HE Interpolator - Anomaly Detection</a>
+        <a class="btn btn-primary" href="#upload">Upload CSV</a>
+      </div>
+    </nav>
+
+    <!-- Header -->
+    <header class="masthead">
+      <div class="container position-relative">
+        <div class="row justify-content-center">
+          <div class="col-xl-6">
+            <div class="text-center text-white">
+              <h1 class="mb-5">Detect anomalies in your semiconductor sensor data securely!</h1>
+              <a class="btn btn-success btn-lg" href="#upload">Get Started</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Upload Section -->
+    <section id="upload" class="text-center bg-light p-5">
+      <div class="container">
+        <h2 class="mb-4">Upload Your Semiconductor Sensor CSV File</h2>
+        <form id="csvUploadForm" enctype="multipart/form-data">
+          <input type="file" id="csvFile" name="csvFile" accept=".csv" class="form-control mb-3" required />
+          <button type="submit" class="btn btn-primary">Analyze</button>
+        </form>
+        <div id="result" class="mt-4"></div>
+      </div>
+    </section>
+
+    <section class="features-icons bg-white text-center">
+        <div class="container">
+          <h2 class="mb-5">How It Works</h2>
+          <div class="row">
+            <div class="col-lg-4">
+              <div class="features-icons-item mx-auto mb-5 mb-lg-3">
+                <div class="features-icons-icon d-flex"><i class="bi-file-earmark-arrow-up m-auto text-primary"></i></div>
+                <h3>Upload Semiconductor Data</h3>
+                <p class="lead mb-0">Simply upload your CSV file containing time-series semiconductor sensor data.</p>
+              </div>
+            </div>
+            <div class="col-lg-4">
+              <div class="features-icons-item mx-auto mb-5 mb-lg-3">
+                <div class="features-icons-icon d-flex"><i class="bi-shield-lock-fill m-auto text-primary"></i></div>
+                <h3>Safe Interpolation</h3>
+                <p class="lead mb-0">Even if your data contains missing values, our system fills them securely using interpolation before analysis.</p>
+              </div>
+            </div>
+            <div class="col-lg-4">
+              <div class="features-icons-item mx-auto mb-0 mb-lg-3">
+                <div class="features-icons-icon d-flex"><i class="bi-bar-chart-line-fill m-auto text-primary"></i></div>
+                <h3>Anomaly Detection</h3>
+                <p class="lead mb-0">View anomaly results by timestamp.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    <!-- Footer -->
+    <footer class="footer bg-light py-4">
+      <div class="container text-center">
+        <p class="text-muted small mb-0">&copy; HE Interpolator - Anomaly Detection. All Rights Reserved.</p>
+      </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+        document.getElementById("csvUploadForm").addEventListener("submit", function (e) {
+          e.preventDefault();
+  
+          const file = document.getElementById("csvFile").files[0];
+          if (!file) {
+            alert("Please select a file.");
+            return;
+          }
+  
+          const formData = new FormData();
+          formData.append("csvFile", file);
+  
+          document.getElementById("result").innerHTML = "<p>Uploading and processing...</p>";
+  
+          fetch("http://localhost:5050/upload", {
+            method: "POST",
+            body: formData,
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              sessionStorage.setItem("uploadResults", JSON.stringify(data));
+              window.location.href = "result.html";
+            })
+            .catch((err) => {
+              console.error(err);
+              document.getElementById("result").innerHTML = "<p class='text-danger'>Upload failed.</p>";
+            });
+        });
+      </script>
+  </body>
+</html>
